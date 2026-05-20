@@ -40,6 +40,37 @@ export default class ObsidianLocalRESTAPISamplePlugin extends Plugin {
 				response.status(500).json({ message: err.message });
 			}
 		});
+
+		// MCP tool: last_active_get_path
+		//
+		// MCP counterpart of the /last-active/ REST route. Returns the
+		// vault-relative path of the currently active note, falling back
+		// to the most-recently-active note cached by this plugin. The
+		// `active` field indicates whether the returned path is the
+		// currently active note (`true`) or a cached fallback (`false`).
+		this.api.addMcpTool(
+			"last_active_get_path",
+			"Return the vault-relative path of the file currently open in Obsidian, " +
+				"falling back to the most-recently-active file when no file is currently open. " +
+				"The returned `active` field is `true` if a file is currently open, " +
+				"`false` if the cached fallback was used. " +
+				"Use this path with vault_read, vault_write, vault_append, vault_patch, " +
+				"vault_get_document_map, or vault_delete to operate on the file. " +
+				"Throws if no file is currently active and no file has been cached yet.",
+			{},
+			async () => {
+				const current = this.app.workspace.getActiveFile();
+				if (current) {
+					return { path: current.path, active: true };
+				}
+				if (this.lastActiveFile) {
+					return { path: this.lastActiveFile.path, active: false };
+				}
+				throw new Error(
+					"No note is currently active and no last-active note has been cached.",
+				);
+			},
+		);
 	}
 
 	//
@@ -81,11 +112,19 @@ export default class ObsidianLocalRESTAPISamplePlugin extends Plugin {
 			)
 		);
 	}
+}
 
-	onunload() {
-		if (this.api) {
-			this.api.unregister();
-		}
+// The shipped `main.d.ts` of obsidian-local-rest-api hasn't been regenerated
+// since v2.x and is missing `addMcpTool`. The runtime (v4.x) provides it, so
+// augment the type locally.
+declare module "obsidian-local-rest-api" {
+	interface LocalRestApiPublicApi {
+		addMcpTool(
+			name: string,
+			description: string,
+			schema: Record<string, unknown>,
+			callback: (args: Record<string, unknown>) => Promise<unknown>,
+		): void;
 	}
 }
 
