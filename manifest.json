@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-local-rest-api-last-active-fallback",
 	"name": "Obsidian Local REST API Last Active Extension",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"minAppVersion": "0.15.0",
 	"description": "Extends Obsidian Local REST API with a /last-active/ endpoint that returns the most recently active note when no note is currently active.",
 	"author": "Martin Gärdestad",
