@@ -1,27 +1,45 @@
-import { Plugin } from "obsidian";
+import { Plugin, TFile } from "obsidian";
 import { getAPI, LocalRestApiPublicApi } from "obsidian-local-rest-api";
 
 export default class ObsidianLocalRESTAPISamplePlugin extends Plugin {
 	private api: LocalRestApiPublicApi;
+	private lastActiveFile: TFile | null = null;
 
 	registerRoutes() {
-		// Here is how you register your routes:
-		//
-		// 1. Get an API handle:
 		this.api = getAPI(this.app, this.manifest);
 
-		// 2. Add your routes -- `addRoute` returns a route object
-		//    https://www.geeksforgeeks.org/express-js-router-route-function/
-		//    that you can attach handlers to
-		this.api.addRoute("/my-route/").get((request, response) => {
-			response.status(200).json({
-				sample_plugin_response_ok: true,
-			});
-		});
+		// GET /last-active/
+		//
+		// Returns the currently active note. When no note is active, falls
+		// back to the most recently active note cached by this plugin. The
+		// `X-Obsidian-Note-Active` response header indicates whether the
+		// returned note is currently active (`true`) or a cached fallback
+		// (`false`).
+		this.api.addRoute("/last-active/").get(async (request, response) => {
+			const current = this.app.workspace.getActiveFile();
+			let file: TFile | null;
+			if (current) {
+				response.set("X-Obsidian-Note-Active", "true");
+				file = current;
+			} else if (this.lastActiveFile) {
+				response.set("X-Obsidian-Note-Active", "false");
+				file = this.lastActiveFile;
+			} else {
+				response.status(404).json({
+					message:
+						"No note is currently active and no last-active note has been cached.",
+				});
+				return;
+			}
 
-		// For more insight into what you can put into a route, have
-		// a look at the existing routes that are handled by
-		// the API itself: https://github.com/coddingtonbear/obsidian-local-rest-api/blob/main/src/requestHandler.ts
+			try {
+				const content = await this.app.vault.read(file);
+				response.set("Content-Location", encodeURI(file.path));
+				response.type("text/markdown").send(content);
+			} catch (err) {
+				response.status(500).json({ message: err.message });
+			}
+		});
 	}
 
 	//
@@ -37,6 +55,21 @@ export default class ObsidianLocalRESTAPISamplePlugin extends Plugin {
 	//
 
 	async onload() {
+		// Seed the cache with whatever note is open when the plugin loads.
+		const currentFile = this.app.workspace.getActiveFile();
+		if (currentFile) {
+			this.lastActiveFile = currentFile;
+		}
+
+		// Refresh the cache whenever the user opens a different note.
+		this.registerEvent(
+			this.app.workspace.on("file-open", (file: TFile | null) => {
+				if (file) {
+					this.lastActiveFile = file;
+				}
+			})
+		);
+
 		if (this.app.plugins.enabledPlugins.has("obsidian-local-rest-api")) {
 			this.registerRoutes();
 		}

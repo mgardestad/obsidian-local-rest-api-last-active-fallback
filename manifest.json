@@ -1,10 +1,9 @@
 {
-	"id": "obsidian-local-rest-api-sample-api-extension",
-	"name": "Local REST API Sample API Extension",
+	"id": "obsidian-local-rest-api-last-active-fallback",
+	"name": "Obsidian Local REST API Last Active Extension",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Example of how you can add additional routes to Obsidian Local REST API via a plugin",
-	"author": "Obsidian",
-	"authorUrl": "https://coddingtonbear.net/",
+	"description": "Extends Obsidian Local REST API with a /last-active/ endpoint that returns the most recently active note when no note is currently active.",
+	"author": "Martin Gärdestad",
 	"isDesktopOnly": true
 }
